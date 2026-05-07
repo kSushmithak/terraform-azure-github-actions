@@ -1,0 +1,20 @@
+# Terraform directories and binaries — NEVER commit
+.terraform/
+.terraform.lock.hcl
+
+# State files — contain secrets
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Sensitive var files
+*.tfvars
+!*.tfvars.example
+
+# Crash logs
+crash.log
+crash.*.log
+
+# OS files
+.DS_Store
+Thumbs.db
