@@ -16,8 +16,7 @@ on:
       - main
   pull_request:
     branches:
-      - main
-      - feature/terraform-infra       
+      - main       
   workflow_dispatch:    # manual trigger button in GitHub UI
 
 permissions:
