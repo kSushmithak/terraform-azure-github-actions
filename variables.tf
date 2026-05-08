@@ -1,7 +1,7 @@
 variable "resource_group_name" {
   description = "Name of the Azure Resource Group to create"
   type        = string
-  default     = "rg-demo-github-actions123"
+  default     = "rg-demo-github-actions1234"
 }
 
 variable "location" {
