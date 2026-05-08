@@ -1,11 +1,5 @@
 ##############################################################################
 # .github/workflows/terraform.yml
-# Deploys Azure infrastructure using Terraform + Client Secret auth
-#
-# Flow:
-#   PR raised  → Plan only + posts comment to PR
-#   PR merged  → Push to main → Plan + Apply runs automatically (no approval)
-#   Manual     → Plan only
 ##############################################################################
 
 name: Terraform Azure Deploy
@@ -33,15 +27,12 @@ env:
 
 jobs:
 
-  ##############################################################################
-  # JOB 1 — Terraform Plan
-  ##############################################################################
   plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
 
     outputs:
-      changes_detected: ${{ steps.set_output.outputs.changes_detected }}
+      changes_detected: ${{ steps.plan.outputs.changes_detected }}
 
     steps:
       - name: Checkout
@@ -91,20 +82,18 @@ jobs:
             -var="resource_group_name=rg-demo-github-actions" \
             -var="location=eastus2"
           EXIT_CODE=$?
-          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
-          if [ $EXIT_CODE -eq 1 ]; then
-            echo "Terraform plan failed!"
-            exit 1
-          fi
-          exit 0
 
-      - name: Set changes output
-        id: set_output
-        run: |
-          if [ "${{ steps.plan.outputs.exit_code }}" == "2" ]; then
+          # Write changes_detected directly — no separate step needed
+          if [ $EXIT_CODE -eq 2 ]; then
             echo "changes_detected=true" >> $GITHUB_OUTPUT
           else
             echo "changes_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Fail the job if plan errored (exit code 1)
+          if [ $EXIT_CODE -eq 1 ]; then
+            echo "Terraform plan failed!"
+            exit 1
           fi
 
       - name: Save plan output
@@ -135,11 +124,11 @@ jobs:
 
             const initOutcome     = '${{ steps.init.outcome }}';
             const validateOutcome = '${{ steps.validate.outcome }}';
-            const exitCode        = '${{ steps.plan.outputs.exit_code }}';
+            const changesDetected = '${{ steps.plan.outputs.changes_detected }}';
 
             const planStatus =
-              exitCode === '0' ? '✅ No changes' :
-              exitCode === '2' ? '⚠️ Changes detected — review before merging' :
+              changesDetected === 'true'  ? '⚠️ Changes detected — review before merging' :
+              changesDetected === 'false' ? '✅ No changes' :
               '❌ Failed';
 
             const body = `## Terraform Plan Result
@@ -166,10 +155,6 @@ jobs:
               body: body
             });
 
-  ##############################################################################
-  # JOB 2 — Terraform Apply
-  # No environment gate — runs automatically after PR is merged to main
-  ##############################################################################
   apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
@@ -178,8 +163,6 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       needs.plan.outputs.changes_detected == 'true'
-
-    # NO environment block — apply runs automatically, no approval needed
 
     steps:
       - name: Checkout
