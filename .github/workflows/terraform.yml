@@ -86,8 +86,6 @@ jobs:
             -input=false \
             -out=tfplan \
             -detailed-exitcode \
-            -var="resource_group_name=rg-demo-github-actions" \
-            -var="location=eastus2"
           EXIT_CODE=$?
           if [ $EXIT_CODE -eq 1 ]; then
             echo "Terraform plan failed!"
