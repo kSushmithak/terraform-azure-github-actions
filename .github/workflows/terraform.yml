@@ -60,6 +60,8 @@ jobs:
               "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
             }
 
+      ######      
+
       # ── 3. Install Terraform ─────────────────────────────────────────────────
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
