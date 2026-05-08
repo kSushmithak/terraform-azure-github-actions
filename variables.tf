@@ -9,7 +9,7 @@ variable "location" {
   type        = string
   default     = "eastus2"
 }
-
+####
 variable "tags" {
   description = "Tags applied to the resource group"
   type        = map(string)
