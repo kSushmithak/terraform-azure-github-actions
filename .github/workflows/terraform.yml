@@ -3,9 +3,9 @@
 # Deploys Azure infrastructure using Terraform + Client Secret auth
 #
 # Triggers:
-#   - Push to main      → plan + apply
-#   - Pull Request      → plan only (no apply)
-#   - Manual trigger    → plan + apply
+#   - Push to main          → plan + apply (after PR merge)
+#   - Pull Request (any)    → plan only, posts comment to PR
+#   - Manual trigger        → plan only (apply skipped — not a push event)
 ##############################################################################
 
 name: Terraform Azure Deploy
@@ -14,15 +14,13 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:    # manual trigger button in GitHub UI
+  pull_request:             # no branches filter — triggers on PRs from any feature branch
+  workflow_dispatch:        # manual trigger button in GitHub UI
 
 permissions:
   id-token: write
   contents: read
-  pull-requests: write  # allows posting plan output as PR comment
+  pull-requests: write      # allows posting plan output as PR comment
 
 env:
   ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
@@ -36,7 +34,7 @@ jobs:
 
   ##############################################################################
   # JOB 1 — Terraform Plan
-  # Runs on: PR and push to main
+  # Runs on: all triggers (PR, push to main, manual)
   ##############################################################################
   plan:
     name: Terraform Plan
@@ -130,9 +128,9 @@ jobs:
               ? plan.substring(0, maxLen) + '\n\n... output truncated ...'
               : plan;
 
-            const initOutcome   = '${{ steps.init.outcome }}';
-            const validateOutcome = '${{ steps.validate.outcome }}';
-            const planExitCode  = '${{ steps.plan.outputs.exit_code }}';
+            const initOutcome      = '${{ steps.init.outcome }}';
+            const validateOutcome  = '${{ steps.validate.outcome }}';
+            const planExitCode     = '${{ steps.plan.outputs.exit_code }}';
 
             const planStatus =
               planExitCode === '0' ? '✅ No changes' :
@@ -172,7 +170,12 @@ jobs:
 
   ##############################################################################
   # JOB 2 — Terraform Apply
-  # Runs on: push to main ONLY (not on PRs)
+  # Runs on: push to main ONLY (i.e. after a PR is merged)
+  #
+  # FIX: github.event_name == 'push' ensures this NEVER runs on:
+  #   - pull_request events (PR open/update)
+  #   - workflow_dispatch (manual trigger from any branch)
+  # It only runs when code lands on main via a merge.
   ##############################################################################
   apply:
     name: Terraform Apply
@@ -180,10 +183,10 @@ jobs:
     needs: plan
     if: |
       github.ref == 'refs/heads/main' &&
-      github.event_name != 'pull_request' &&
+      github.event_name == 'push' &&
       needs.plan.outputs.plan_exit_code == '2'
 
-    environment: production   # adds manual approval gate in GitHub
+    environment: production   # adds manual approval gate in GitHub (optional)
 
     steps:
       # ── 1. Checkout ──────────────────────────────────────────────────────────
